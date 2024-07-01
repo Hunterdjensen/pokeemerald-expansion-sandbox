@@ -27,7 +27,7 @@ static bool8 CheckPyramidBagHasItem(u16 itemId, u16 count);
 static bool8 CheckPyramidBagHasSpace(u16 itemId, u16 count);
 static const u8 *ItemId_GetPluralName(u16);
 static bool32 DoesItemHavePluralName(u16);
-static void ShowItemIconSprite(u16 item, bool8 firstTime, bool8 flash);
+static void ShowItemIconSprite(u16 item, bool8 flash);
 static void DestroyItemIconSprite(void);
 
 EWRAM_DATA struct BagPocket gBagPockets[POCKETS_COUNT] = {0};
@@ -1000,28 +1000,6 @@ u32 GetItemStatus2Mask(u16 itemId)
         return 0;
 }
 
-// Item Description Header
-bool8 GetSetItemObtained(u16 item, u8 caseId)
-{
-    u8 index;
-    u8 bit;
-    u8 mask;
-
-    index = item / 8;
-    bit = item % 8;
-    mask = 1 << bit;
-    switch (caseId)
-    {
-    case FLAG_GET_OBTAINED:
-        return gSaveBlock2Ptr->itemFlags[index] & mask;
-    case FLAG_SET_OBTAINED:
-        gSaveBlock2Ptr->itemFlags[index] |= mask;
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
 static u8 ReformatItemDescription(u16 item, u8 *dest)
 {
     u8 count = 0;
@@ -1070,7 +1048,7 @@ void DrawHeaderBox(void)
 {
     struct WindowTemplate template;
     u16 item = gSpecialVar_0x8006;
-    u8 headerType = gSpecialVar_0x8009;
+    //u8 headerType = gSpecialVar_0x8009;
     u8 textY;
     u8 *dst;
     bool8 handleFlash = FALSE;
@@ -1078,16 +1056,11 @@ void DrawHeaderBox(void)
     if (GetFlashLevel() > 0 || InBattlePyramid_())
         handleFlash = TRUE;
 
-    if (headerType == 1)
-        dst = gStringVar3;
-    else
-        dst = gStringVar1;
-
-    if (GetSetItemObtained(item, FLAG_GET_OBTAINED))
-    {
-        ShowItemIconSprite(item, FALSE, handleFlash);
-        return; //no box if item obtained previously
-    }
+    // if (headerType == 1)   // Needed?
+    //     dst = gStringVar1;
+    // else
+    //     dst = gStringVar1; // Normal case, writes it at the top of the screen I think
+    dst = gStringVar1;
 
     SetWindowTemplateFields(&template, 0, 1, 1, 28, 3, 15, 8);
     sHeaderBoxWindowId = AddWindow(&template);
@@ -1102,28 +1075,22 @@ void DrawHeaderBox(void)
     else
         textY = 0;
 
-    ShowItemIconSprite(item, TRUE, handleFlash);
+    ShowItemIconSprite(item, handleFlash);
     AddTextPrinterParameterized(sHeaderBoxWindowId, 0, dst, ITEM_ICON_X + 2, textY, 0, NULL);
 }
 
 void HideHeaderBox(void)
 {
     DestroyItemIconSprite();
-
-    if (!GetSetItemObtained(gSpecialVar_0x8006, FLAG_GET_OBTAINED))
-    {
-        //header box only exists if haven't seen item before
-        GetSetItemObtained(gSpecialVar_0x8006, FLAG_SET_OBTAINED);
-        ClearStdWindowAndFrameToTransparent(sHeaderBoxWindowId, FALSE);
-        CopyWindowToVram(sHeaderBoxWindowId, 3);
-        RemoveWindow(sHeaderBoxWindowId);
-    }
+    ClearStdWindowAndFrameToTransparent(sHeaderBoxWindowId, FALSE);
+    CopyWindowToVram(sHeaderBoxWindowId, 3);
+    RemoveWindow(sHeaderBoxWindowId);
 }
 
 #include "gpu_regs.h"
 
 #define ITEM_TAG 0x2722 //same as money label
-static void ShowItemIconSprite(u16 item, bool8 firstTime, bool8 flash)
+static void ShowItemIconSprite(u16 item, bool8 flash)
 {
     s16 x = 0;
     s16 y = 0;
@@ -1141,18 +1108,9 @@ static void ShowItemIconSprite(u16 item, bool8 firstTime, bool8 flash)
         spriteId2 = AddItemIconSprite(ITEM_TAG, ITEM_TAG, item);
     if (iconSpriteId != MAX_SPRITES)
     {
-        if (!firstTime)
-        {
-            //show in message box
-            x = 213;
-            y = 140;
-        }
-        else
-        {
-            // show in header box
-            x = ITEM_ICON_X;
-            y = ITEM_ICON_Y;
-        }
+        // show in header box
+        x = ITEM_ICON_X;
+        y = ITEM_ICON_Y;
 
         gSprites[iconSpriteId].x2 = x;
         gSprites[iconSpriteId].y2 = y;
