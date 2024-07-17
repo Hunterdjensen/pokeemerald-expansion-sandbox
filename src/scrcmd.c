@@ -51,6 +51,8 @@
 #include "list_menu.h"
 #include "malloc.h"
 #include "constants/event_objects.h"
+#include "constants/items.h"
+#include "party_menu.h"
 
 typedef u16 (*SpecialFunc)(void);
 typedef void (*NativeFunc)(struct ScriptContext *ctx);
@@ -1813,6 +1815,22 @@ bool8 ScrCmd_checkpartymove(struct ScriptContext *ctx)
             gSpecialVar_Result = i;
             gSpecialVar_0x8004 = species;
             break;
+        }
+    }
+
+    // If you haven't found one yet, check if any party mon can learn an HM. If so, let you use it as a field move anyway.
+    if (gSpecialVar_Result == PARTY_SIZE && CheckBagHasItem(MoveToHM(moveId), 1)){
+        for (i = 0; i < PARTY_SIZE; i++)
+        {
+            u16 species = GetMonData(&gPlayerParty[i], MON_DATA_SPECIES, NULL);
+            if (!species)  // Break once you get to an empty party spot
+                break;
+            if (!GetMonData(&gPlayerParty[i], MON_DATA_IS_EGG) && CanTeachMove(&gPlayerParty[i], moveId) == CAN_LEARN_MOVE)
+            {
+                gSpecialVar_Result = i;
+                gSpecialVar_0x8004 = species;
+                break;
+            }
         }
     }
     return FALSE;
